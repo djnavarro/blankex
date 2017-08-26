@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+    
+  <head>
+    <title>UNSW CCS</title>
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/jspsych.js"></script>
+    <script src="./js/plugins/jspsych-survey-multi-choice.js"></script>
+	<script src="./js/plugins/jspsych-button-response.js"></script>
+	<script src="./js/welcome.js"></script>
+    <link href="./js/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+  </head>
+
+  <body>
+	  <div id="welcome"></div>       
+  </body>
+
+  <script>  
+      
+	  /* initialise timeline*/
+      var timeline=[];
+      var introloop=[];
+      var turkcode = (Math.floor(Math.random() * 899999) + 100000).toString(); 
+	  var images = [      
+		  './img/test1.jpg', 
+		  './img/test2.jpg'
+	  ]; 
+    
+      /* function to start the jsPsych experiment */
+      function startExperiment(){
+		  
+          // record the turkcode in the jsPsych data
+          jsPsych.data.addProperties({
+              turkcode: turkcode
+          });
+
+          jsPsych.init({
+            timeline: timeline,
+            preload_images: images,
+            on_finish: function() { 
+                endExperiment( jsPsych.data.dataAsCSV(), function() { document.write('<div id="endscreen" class="endscreen" style="width:1000px"><div class="endscreen" style="text-align:center; border:0px solid; padding:10px; font-size:120%; width:800px; float:right"><p><br><br><br>All done!<br><br>Your completion code is <span id="turkcode" style="font-weight:bold;font-size:130%">' + turkcode + '</span>. To receive payment for the HIT, return to the Amazon Mechanical Turk page and enter this code. Please contact us if something goes wrong and we\'ll fix it as quickly as possible.</p></div></div>') })
+            }
+          });
+      }
+	  
+      /* save and finish */ 
+      function endExperiment(dataset,callback) {
+          // $.post('submit',{"content": dataset}); // uncomment to post data 
+          setTimeout(callback,1000) 
+          
+      }
+
+      /* change the display property of a set of objects */
+      function setDisplay(theClass, theValue) {
+	       var i, classElements = document.getElementsByClassName(theClass);
+	       for (i = 0; i < classElements.length; i = i + 1) {
+		      classElements[i].style.display = theValue;
+	       }
+      }
+
+      /* A grossly typical way to run the instructions is to go through a series
+      of small slides (implemeted as trials in jsPsych) with a minimum reading time 
+      enforced for each slide, such that the "continue" button doesn't appear until
+      the time elapses. At the end of the instructions, there is a short quiz, and if
+      the participant gets them wrong they are sent back to the beginning */
+      
+      /* define the instruction block */
+      var instruction_block = {
+          type: 'button-response',
+          timing_post_trial: 0,
+	      button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
+          choices: ['Click here to continue'],
+          on_trial_start: function() { setTimeout(function() {setDisplay("jspsych-btn","")}, 500)},
+          is_html: true,
+          timeline: [
+              {stimulus: 'This is the first instruction page'},
+		      {stimulus: 'This is the second instuction page'}
+          ]
+      };
+      introloop.push(instruction_block); // <- the setup block gets pushed to a "loop node"
+      
+      
+      /* text defining the instruction check questions */ 
+      var Q0_text = "<b>Question 1:</b> What is the answer to this question?";
+      var Q0_answers = ["Something wrong", "Something else wrong", "Something CORRECT"];
+      var Q1_text = "<b>Question 2:</b> What is the answer to this question?";
+      var Q1_answers = ["Something wrong", "Something CORRECT", "Something else wrong"];
+      var correctstring = '{"Q0":"' + Q0_answers[2] + '","Q1":"' + Q1_answers[1] + '"}';
+      
+      /* define instruction check block */
+	  var instructioncorrect = false; 
+      var instruction_check = {
+          type: "survey-multi-choice",
+          preamble: ["<p align='center'><b>Check your knowledge before you begin!</b></p>"],
+          questions: [Q0_text, Q1_text],
+          options: [Q0_answers, Q1_answers],
+          on_finish: function(data) {
+              if( data.responses == correctstring) {
+                  action = false;
+                  instructioncorrect = true;
+              }
+          }
+      }
+      introloop.push(instruction_check)
+      
+      /* define a page for the incorrect response */
+      var showsplash = true;
+      var splash_screen = {
+          type: 'button-response',
+          timing_post_trial: 0,
+	      button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
+          choices: ['Click here to read the instructions again'],
+          on_trial_start: function() { setTimeout(function() {setDisplay("jspsych-btn","")}, 500)},
+          is_html: true,
+          stimulus: 'Unfortunately, at least one of your answers was incorrect.'
+      }
+      
+      /* ...but push it to a conditional node that only shows it if the response was wrong */
+      var conditional_splash = {
+          timeline: [splash_screen],
+          conditional_function: function(data) {
+              return !instructioncorrect // skip if correct
+          }
+      }
+      introloop.push(conditional_splash)
+      
+      /* finally, add the entirety of this introductory section to a loop node ... */
+      var loop_node = {
+          timeline: introloop,
+          loop_function: function(data) {
+              //var action = true;
+              return !instructioncorrect // stop looping if correct
+          }
+      }
+      timeline.push(loop_node) // ... and add that to the timeline
+      
+      /* success trial */
+      var successtrial = {
+          type: 'button-response',
+          timing_post_trial: 0,
+	      button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
+          choices: ['Click here to begin the experiment'],
+          on_trial_start: function() { setTimeout(function() {setDisplay("jspsych-btn","")}, 500)},
+          is_html: true,
+          stimulus: 'Well done!'
+      };
+      timeline.push(successtrial);
+            
+      /* define the instruction block */
+      var experiment_block = {
+          type: 'button-response',
+          timing_post_trial: 0,
+	      button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
+          choices: ['Click here to continue'],
+          on_trial_start: function() { setTimeout(function() {setDisplay("jspsych-btn","")}, 500)},
+          is_html: true,
+          timeline: [
+              {stimulus: 'This is the first experimental trial'},
+		      {stimulus: 'This is the second experimental trial'}
+          ]
+      };
+      timeline.push(experiment_block);      
+      
+      /* start by running the "welcome" */
+      welcome.run();
+      
+  </script>
+</html>
