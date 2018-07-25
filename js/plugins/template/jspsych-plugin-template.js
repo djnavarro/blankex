@@ -6,18 +6,21 @@ jsPsych.plugins["PLUGIN-NAME"] = (function() {
 
   var plugin = {};
 
+  plugin.info = {
+    name: "PLUGIN-NAME",
+    parameters: {
+      parameter_name: {
+        type: jsPsych.plugins.parameterType.INT, // BOOL, STRING, INT, FLOAT, FUNCTION, KEYCODE, SELECT, HTML_STRING, IMAGE, AUDIO, VIDEO, OBJECT, COMPLEX
+        default: undefined
+      },
+      parameter_name: {
+        type: jsPsych.plugins.parameterType.IMAGE,
+        default: undefined
+      }
+    }
+  }
+
   plugin.trial = function(display_element, trial) {
-
-    // set default values for parameters
-    trial.parameter = trial.parameter || 'default value';
-
-    // allow variables as functions
-    // this allows any trial variable to be specified as a function
-    // that will be evaluated when the trial runs. this allows users
-    // to dynamically adjust the contents of a trial as a result
-    // of other trials, among other uses. you can leave this out,
-    // but in general it should be included
-    trial = jsPsych.pluginAPI.evaluateFunctionParameters(trial);
 
     // data saving
     var trial_data = {

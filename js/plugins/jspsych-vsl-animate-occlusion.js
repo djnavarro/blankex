@@ -7,7 +7,7 @@
  *
  * Josh de Leeuw
  *
- * documentation: https://github.com/jodeleeuw/jsPsych/wiki/jspsych-vsl-animate-occlusion
+ * documentation: docs.jspsych.org
  *
  */
 
@@ -17,22 +17,68 @@ jsPsych.plugins['vsl-animate-occlusion'] = (function() {
 
   jsPsych.pluginAPI.registerPreload('vsl-animate-occlusion', 'stimuli', 'image');
 
+  plugin.info = {
+    name: 'vsl-animate-occlusion',
+    description: '',
+    parameters: {
+      stimuli: {
+        type: jsPsych.plugins.parameterType.IMAGE,
+        pretty_name: 'Stimuli',
+        default: undefined,
+        array: true,
+        description: 'A stimulus is a path to an image file.'
+      },
+      choices: {
+        type: jsPsych.plugins.parameterType.KEYCODE,
+        pretty_name: 'Choices',
+        array: true,
+        default: jsPsych.ALL_KEYS,
+        description: 'This array contains the keys that the subject is allowed to press in order to respond to the stimulus. '
+      },
+      canvas_size: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Canvas size',
+        array: true,
+        default: [400,400],
+        description: 'Array specifying the width and height of the area that the animation will display in.'
+      },
+      image_size: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Image size',
+        array: true,
+        default: [100,100],
+        description: 'Array specifying the width and height of the images to show.'
+      },
+      initial_direction: {
+        type: jsPsych.plugins.parameterType.SELECT,
+        pretty_name: 'Initial direction',
+        choices: ['left','right'],
+        default: 'left',
+        description: 'Which direction the stimulus should move first.'
+      },
+      occlude_center: {
+        type: jsPsych.plugins.parameterType.BOOL,
+        pretty_name: 'Occlude center',
+        default: true,
+        description: 'If true, display a rectangle in the center of the screen that is just wide enough to occlude the image completely as it passes behind.'
+      },
+      cycle_duration: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Cycle duration',
+        default: 1000,
+        description: 'How long it takes for a stimulus in the sequence to make a complete cycle.'
+      },
+      pre_movement_duration: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Pre movement duration',
+        default: 500,
+        description: 'How long to wait before the stimuli starts moving from behind the center rectangle.'
+      }
+    }
+  }
+
   plugin.trial = function(display_element, trial) {
-
-    // default trial parameters
-    trial.timing_cycle = trial.timing_cycle || 1000;
-    trial.canvas_size = trial.canvas_size || [400, 400];
-    trial.image_size = trial.image_size || [100, 100];
-    trial.initial_direction = trial.initial_direction || "left";
-    trial.occlude_center = (typeof trial.occlude_center === 'undefined') ? true : trial.occlude_center;
-    trial.choices = trial.choices || [];
-    trial.timing_pre_movement = (typeof trial.timing_pre_movement === 'undefined') ? 500 : trial.timing_pre_movement;
-
-    // if any trial variables are functions
-    // this evaluates the function and replaces
-    // it with the output of the function
-    trial = jsPsych.pluginAPI.evaluateFunctionParameters(trial);
-
+    
     // variable to keep track of timing info and responses
     var start_time = 0;
     var responses = [];
@@ -42,23 +88,23 @@ jsPsych.plugins['vsl-animate-occlusion'] = (function() {
         params: {
           x: trial.canvas_size[0] - trial.image_size[0]
         },
-        ms: trial.timing_cycle / 2
+        ms: trial.cycle_duration / 2
       }, {
         params: {
           x: trial.canvas_size[0] / 2 - trial.image_size[0] / 2
         },
-        ms: trial.timing_cycle / 2
+        ms: trial.cycle_duration / 2
       }],
       [{
         params: {
           x: 0
         },
-        ms: trial.timing_cycle / 2
+        ms: trial.cycle_duration / 2
       }, {
         params: {
           x: trial.canvas_size[0] / 2 - trial.image_size[0] / 2
         },
-        ms: trial.timing_cycle / 2
+        ms: trial.cycle_duration / 2
       }]
     ];
 
@@ -90,7 +136,7 @@ jsPsych.plugins['vsl-animate-occlusion'] = (function() {
       }
     }
 
-    display_element.append($("<svg id='jspsych-vsl-animate-occlusion-canvas' width=" + trial.canvas_size[0] + " height=" + trial.canvas_size[1] + "></svg>"));
+    display_element.innerHTML = "<svg id='jspsych-vsl-animate-occlusion-canvas' width=" + trial.canvas_size[0] + " height=" + trial.canvas_size[1] + "></svg>";
 
     var paper = Snap("#jspsych-vsl-animate-occlusion-canvas");
 
@@ -98,7 +144,7 @@ jsPsych.plugins['vsl-animate-occlusion'] = (function() {
       "id": 'jspsych-vsl-animate-occlusion-moving-image'
     });
 
-    document.getElementById('jspsych-vsl-animate-occlusion-moving-image').removeAttribute('preserveAspectRatio');
+    display_element.querySelector('#jspsych-vsl-animate-occlusion-moving-image').removeAttribute('preserveAspectRatio');
 
     if (trial.occlude_center) {
       paper.rect((trial.canvas_size[0] / 2) - (trial.image_size[0] / 2), 0, trial.image_size[0], trial.canvas_size[1]).attr({
@@ -123,17 +169,17 @@ jsPsych.plugins['vsl-animate-occlusion'] = (function() {
       allow_held_key: false
     });
 
-    if (trial.timing_pre_movement > 0) {
-      setTimeout(function() {
+    if (trial.pre_movement_duration > 0) {
+      jsPsych.pluginAPI.setTimeout(function() {
         next_step();
-      }, trial.timing_pre_movement);
+      }, trial.pre_movement_duration);
     } else {
       next_step();
     }
 
     function endTrial() {
 
-      display_element.html('');
+      display_element.innerHTML = '';
 
       jsPsych.pluginAPI.cancelKeyboardResponse(key_listener);
 

@@ -12,23 +12,81 @@ jsPsych.plugins["categorize-animation"] = (function() {
 
   jsPsych.pluginAPI.registerPreload('categorize-animation', 'stimuli', 'image');
 
+  plugin.info = {
+    name: 'categorize-animation',
+    description: '',
+    parameters: {
+      stimuli: {
+        type: jsPsych.plugins.parameterType.IMAGE,
+        pretty_name: 'Stimuli',
+        default: undefined,
+        description: 'Array of paths to image files.'
+      },
+      key_answer: {
+        type: jsPsych.plugins.parameterType.KEYCODE,
+        pretty_name: 'Key answer',
+        default: undefined,
+        description: 'The key to indicate correct response'
+      },
+      choices: {
+        type: jsPsych.plugins.parameterType.KEYCODE,
+        pretty_name: 'Choices',
+        default: jsPsych.ALL_KEYS,
+        array: true,
+        description: 'The keys subject is allowed to press to respond to stimuli.'
+      },
+      text_answer: {
+        type: jsPsych.plugins.parameterType.STRING,
+        pretty_name: 'Text answer',
+        default: null,
+        description: 'Text to describe correct answer.'
+      },
+      correct_text: {
+        type: jsPsych.plugins.parameterType.STRING,
+        pretty_name: 'Correct text',
+        default: 'Correct.',
+        description: 'String to show when subject gives correct answer'
+      },
+      incorrect_text: {
+        type: jsPsych.plugins.parameterType.STRING,
+        pretty_name: 'Incorrect text',
+        default: 'Wrong.',
+        description: 'String to show when subject gives incorrect answer.'
+      },
+      frame_time: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Frame time',
+        default: 500,
+        description: 'Duration to display each image.'
+      },
+      sequence_reps: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Sequence repetitions',
+        default: 1,
+        description: 'How many times to display entire sequence.'
+      },
+      allow_response_before_complete: {
+        type: jsPsych.plugins.parameterType.BOOL,
+        pretty_name: 'Allow response before complete',
+        default: false,
+        description: 'If true, subject can response before the animation sequence finishes'
+      },
+      feedback_duration: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Feedback duration',
+        default: 2000,
+        description: 'How long to show feedback'
+      },
+      prompt: {
+        type: jsPsych.plugins.parameterType.STRING,
+        pretty_name: 'Prompt',
+        default: null,
+        description: 'Any content here will be displayed below the stimulus.'
+      },
+    }
+  }
+
   plugin.trial = function(display_element, trial) {
-
-    // set default values
-    trial.sequence_reps = trial.sequence_reps || 1;
-    trial.key_answer = trial.key_answer;
-    trial.text_answer = (typeof trial.text_answer === 'undefined') ? "" : trial.text_answer;
-    trial.correct_text = trial.correct_text || "Correct.";
-    trial.incorrect_text = trial.incorrect_text || "Wrong.";
-    trial.allow_response_before_complete = trial.allow_response_before_complete || false;
-    trial.frame_time = trial.frame_time || 500;
-    trial.timing_feedback_duration = trial.timing_feedback_duration || 2000;
-    trial.prompt = (typeof trial.prompt === 'undefined') ? '' : trial.prompt;
-
-    // if any trial variables are functions
-    // this evaluates the function and replaces
-    // it with the output of the function
-    trial = jsPsych.pluginAPI.evaluateFunctionParameters(trial);
 
     var animate_frame = -1;
     var reps = 0;
@@ -44,7 +102,7 @@ jsPsych.plugins["categorize-animation"] = (function() {
 
     // show animation
     var animate_interval = setInterval(function() {
-      display_element.html(""); // clear everything
+      display_element.innerHTML = ''; // clear everything
       animate_frame++;
       if (animate_frame == trial.stimuli.length) {
         animate_frame = 0;
@@ -57,23 +115,20 @@ jsPsych.plugins["categorize-animation"] = (function() {
       }
 
       if (showAnimation) {
-        display_element.append($('<img>', {
-          "src": trial.stimuli[animate_frame],
-          "class": 'jspsych-categorize-animation-stimulus'
-        }));
+        display_element.innerHTML += '<img src="'+trial.stimuli[animate_frame]+'" class="jspsych-categorize-animation-stimulus"></img>';
       }
 
       if (!responded && trial.allow_response_before_complete) {
         // in here if the user can respond before the animation is done
-        if (trial.prompt !== "") {
-          display_element.append(trial.prompt);
+        if (trial.prompt !== null) {
+          display_element.innerHTML += trial.prompt;
         }
       } else if (!responded) {
         // in here if the user has to wait to respond until animation is done.
         // if this is the case, don't show the prompt until the animation is over.
         if (!showAnimation) {
-          if (trial.prompt !== "") {
-            display_element.append(trial.prompt);
+          if (trial.prompt !== null) {
+            display_element.innerHTML += trial.prompt;
           }
         }
       } else {
@@ -86,14 +141,14 @@ jsPsych.plugins["categorize-animation"] = (function() {
         } else {
           feedback_text = trial.incorrect_text.replace("%ANS%", trial.text_answer);
         }
-        display_element.append(feedback_text);
+        display_element.innerHTML += feedback_text;
 
         // set timeout to clear feedback
         if (!timeoutSet) {
           timeoutSet = true;
-          setTimeout(function() {
+          jsPsych.pluginAPI.setTimeout(function() {
             endTrial();
-          }, trial.timing_feedback_duration);
+          }, trial.feedback_duration);
         }
       }
 
@@ -139,7 +194,7 @@ jsPsych.plugins["categorize-animation"] = (function() {
 
     function endTrial() {
       clearInterval(animate_interval); // stop animation!
-      display_element.html(''); // clear everything
+      display_element.innerHTML = ''; // clear everything
       jsPsych.finishTrial(trial_data);
     }
   };

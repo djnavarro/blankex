@@ -13,78 +13,120 @@ jsPsych.plugins['survey-text'] = (function() {
 
   var plugin = {};
 
+  plugin.info = {
+    name: 'survey-text',
+    description: '',
+    parameters: {
+      questions: {
+        type: jsPsych.plugins.parameterType.COMPLEX,
+        array: true,
+        pretty_name: 'Questions',
+        default: undefined,
+        nested: {
+          prompt: {
+            type: jsPsych.plugins.parameterType.STRING,
+            pretty_name: 'Prompt',
+            default: undefined,
+            description: 'Prompt for the subject to response'
+          },
+          value: {
+            type: jsPsych.plugins.parameterType.STRING,
+            pretty_name: 'Value',
+            default: "",
+            description: 'The string will be used to populate the response field with editable answer.'
+          },
+          rows: {
+            type: jsPsych.plugins.parameterType.INT,
+            pretty_name: 'Rows',
+            default: 1,
+            description: 'The number of rows for the response text box.'
+          },
+          columns: {
+            type: jsPsych.plugins.parameterType.INT,
+            pretty_name: 'Columns',
+            default: 40,
+            description: 'The number of columns for the response text box.'
+          }
+        }
+      },
+      preamble: {
+        type: jsPsych.plugins.parameterType.STRING,
+        pretty_name: 'Preamble',
+        default: null,
+        description: 'HTML formatted string to display at the top of the page above all the questions.'
+      },
+      button_label: {
+        type: jsPsych.plugins.parameterType.STRING,
+        pretty_name: 'Button label',
+        default:  'Continue',
+        description: 'The text that appears on the button to finish the trial.'
+      }
+    }
+  }
+
   plugin.trial = function(display_element, trial) {
 
-    trial.preamble = typeof trial.preamble == 'undefined' ? "" : trial.preamble;
-    if (typeof trial.rows == 'undefined') {
-      trial.rows = [];
-      for (var i = 0; i < trial.questions.length; i++) {
-        trial.rows.push(1);
+    for (var i = 0; i < trial.questions.length; i++) {
+      if (typeof trial.questions[i].rows == 'undefined') {
+        trial.questions[i].rows = 1;
       }
     }
-    if (typeof trial.columns == 'undefined') {
-      trial.columns = [];
-      for (var i = 0; i < trial.questions.length; i++) {
-        trial.columns.push(40);
+    for (var i = 0; i < trial.questions.length; i++) {
+      if (typeof trial.questions[i].columns == 'undefined') {
+        trial.questions[i].columns = 40;
+      }
+    }
+    for (var i = 0; i < trial.questions.length; i++) {
+      if (typeof trial.questions[i].value == 'undefined') {
+        trial.questions[i].value = "";
       }
     }
 
-    // if any trial variables are functions
-    // this evaluates the function and replaces
-    // it with the output of the function
-    trial = jsPsych.pluginAPI.evaluateFunctionParameters(trial);
-
+    var html = '';
     // show preamble text
-    display_element.append($('<div>', {
-      "id": 'jspsych-survey-text-preamble',
-      "class": 'jspsych-survey-text-preamble'
-    }));
-
-    $('#jspsych-survey-text-preamble').html(trial.preamble);
-
+    if(trial.preamble !== null){
+      html += '<div id="jspsych-survey-text-preamble" class="jspsych-survey-text-preamble">'+trial.preamble+'</div>';
+    }
     // add questions
     for (var i = 0; i < trial.questions.length; i++) {
-      // create div
-      display_element.append($('<div>', {
-        "id": 'jspsych-survey-text-' + i,
-        "class": 'jspsych-survey-text-question'
-      }));
-
-      // add question text
-      $("#jspsych-survey-text-" + i).append('<p class="jspsych-survey-text">' + trial.questions[i] + '</p>');
-
-      // add text box
-      $("#jspsych-survey-text-" + i).append('<textarea name="#jspsych-survey-text-response-' + i + '" cols="' + trial.columns[i] + '" rows="' + trial.rows[i] + '"></textarea>');
+      html += '<div id="jspsych-survey-text-"'+i+'" class="jspsych-survey-text-question" style="margin: 2em 0em;">';
+      html += '<p class="jspsych-survey-text">' + trial.questions[i].prompt + '</p>';
+      var autofocus = i == 0 ? "autofocus" : "";
+      if(trial.questions[i].rows == 1){
+        html += '<input type="text" name="#jspsych-survey-text-response-' + i + '" size="'+trial.questions[i].columns+'" value="'+trial.questions[i].value+'" '+autofocus+'></input>';
+      } else {
+        html += '<textarea name="#jspsych-survey-text-response-' + i + '" cols="' + trial.questions[i].columns + '" rows="' + trial.questions[i].rows + '" '+autofocus+'>'+trial.questions[i].value+'</textarea>';
+      }
+      html += '</div>';
     }
 
     // add submit button
-    display_element.append($('<button>', {
-      'id': 'jspsych-survey-text-next',
-      'class': 'jspsych-btn jspsych-survey-text'
-    }));
-    $("#jspsych-survey-text-next").html('Submit Answers');
-    $("#jspsych-survey-text-next").click(function() {
+    html += '<button id="jspsych-survey-text-next" class="jspsych-btn jspsych-survey-text">'+trial.button_label+'</button>';
+
+    display_element.innerHTML = html;
+
+    display_element.querySelector('#jspsych-survey-text-next').addEventListener('click', function() {
       // measure response time
       var endTime = (new Date()).getTime();
       var response_time = endTime - startTime;
 
       // create object to hold responses
       var question_data = {};
-      $("div.jspsych-survey-text-question").each(function(index) {
+      var matches = display_element.querySelectorAll('div.jspsych-survey-text-question');
+      for(var index=0; index<matches.length; index++){
         var id = "Q" + index;
-        var val = $(this).children('textarea').val();
+        var val = matches[index].querySelector('textarea, input').value;
         var obje = {};
         obje[id] = val;
-        $.extend(question_data, obje);
-      });
-
+        Object.assign(question_data, obje);
+      }
       // save data
       var trialdata = {
         "rt": response_time,
         "responses": JSON.stringify(question_data)
       };
 
-      display_element.html('');
+      display_element.innerHTML = '';
 
       // next trial
       jsPsych.finishTrial(trialdata);

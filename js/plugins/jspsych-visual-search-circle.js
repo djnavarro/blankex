@@ -8,8 +8,6 @@
  *
  * based on code written for psychtoolbox by Ben Motz
  *
- * requires Snap.svg library (snapsvg.io)
- *
  * documentation: docs.jspsych.org
  *
  **/
@@ -22,47 +20,88 @@ jsPsych.plugins["visual-search-circle"] = (function() {
   jsPsych.pluginAPI.registerPreload('visual-search-circle', 'foil', 'image');
   jsPsych.pluginAPI.registerPreload('visual-search-circle', 'fixation_image', 'image');
 
-  plugin.create = function(params) {
-
-    var trials = new Array(params.target_present.length);
-
-    for (var i = 0; i < trials.length; i++) {
-      trials[i] = {};
-      trials[i].target_present = params.target_present[i];
-      trials[i].set_size = params.set_size[i];
-      trials[i].target = params.target;
-      trials[i].foil = params.foil;
-      trials[i].fixation_image = params.fixation_image;
-      trials[i].target_size = params.target_size || [50, 50];
-      trials[i].fixation_size = params.fixation_size || [16, 16];
-      trials[i].circle_diameter = params.circle_diameter || 250;
-      trials[i].target_present_key = params.target_present_key || 74;
-      trials[i].target_absent_key = params.target_absent_key || 70;
-      trials[i].timing_max_search = (typeof params.timing_max_search === 'undefined') ? -1 : params.timing_max_search;
-      trials[i].timing_fixation = (typeof params.timing_fixation === 'undefined') ? 1000 : params.timing_fixation;
+  plugin.info = {
+    name: 'visual-search-circle',
+    description: '',
+    parameters: {
+      target: {
+        type: jsPsych.plugins.parameterType.IMAGE,
+        pretty_name: 'Target',
+        default: undefined,
+        description: 'The image to be displayed.'
+      },
+      foil: {
+        type: jsPsych.plugins.parameterType.IMAGE,
+        pretty_name: 'Foil',
+        default: undefined,
+        description: 'Path to image file that is the foil/distractor.'
+      },
+      fixation_image: {
+        type: jsPsych.plugins.parameterType.IMAGE,
+        pretty_name: 'Fixation image',
+        default: undefined,
+        description: 'Path to image file that is a fixation target.'
+      },
+      set_size: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Set size',
+        default: undefined,
+        description: 'How many items should be displayed?'
+      },
+      target_present: {
+        type: jsPsych.plugins.parameterType.BOOL,
+        pretty_name: 'Target present',
+        default: true,
+        description: 'Is the target present?'
+      },
+      target_size: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Target size',
+        array: true,
+        default: [50, 50],
+        description: 'Two element array indicating the height and width of the search array element images.'
+      },
+      fixation_size: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Fixation size',
+        array: true,
+        default: [16, 16],
+        description: 'Two element array indicating the height and width of the fixation image.'
+      },
+      circle_diameter: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Circle diameter',
+        default: 250,
+        description: 'The diameter of the search array circle in pixels.'
+      },
+      target_present_key: {
+        type: jsPsych.plugins.parameterType.KEYCODE,
+        pretty_name: 'Target present key',
+        default: 'j',
+        description: 'The key to press if the target is present in the search array.'
+      },
+      target_absent_key: {
+        type: jsPsych.plugins.parameterType.KEYCODE,
+        pretty_name: 'Target absent key',
+        default: 'f',
+        description: 'The key to press if the target is not present in the search array.'
+      },
+      trial_duration: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Trial duration',
+        default: null,
+        description: 'The maximum duration to wait for a response.'
+      },
+      fixation_duration: {
+        type: jsPsych.plugins.parameterType.INT,
+        pretty_name: 'Fixation duration',
+        default: 1000,
+        description: 'How long to show the fixation image for before the search array (in milliseconds).'
+      }
     }
-
-    return trials;
-  };
+  }
 
   plugin.trial = function(display_element, trial) {
-
-    // default values
-    trial.target_size = trial.target_size || [50, 50];
-    trial.fixation_size = trial.fixation_size || [16, 16];
-    trial.circle_diameter = trial.circle_diameter || 250;
-    trial.target_present_key = trial.target_present_key || 74;
-    trial.target_absent_key = trial.target_absent_key || 70;
-    trial.timing_max_search = (typeof trial.timing_max_search === 'undefined') ? -1 : trial.timing_max_search;
-    trial.timing_fixation = (typeof trial.timing_fixation === 'undefined') ? 1000 : trial.timing_fixation;
-
-    trial = jsPsych.pluginAPI.evaluateFunctionParameters(trial);
-
-    // screen information
-    var screenw = display_element.width();
-    var screenh = display_element.height();
-    var centerx = screenw / 2;
-    var centery = screenh / 2;
 
     // circle params
     var diam = trial.circle_diameter; // pixels
@@ -90,33 +129,45 @@ jsPsych.plugins["visual-search-circle"] = (function() {
     }
 
     // get target to draw on
-    display_element.append($('<svg id="jspsych-visual-search-circle-svg" width=' + paper_size + ' height=' + paper_size + '></svg>'));
-    var paper = Snap('#jspsych-visual-search-circle-svg');
+    display_element.innerHTML += '<div id="jspsych-visual-search-circle-container" style="position: relative; width:' + paper_size + 'px; height:' + paper_size + 'px"></div>';
+    var paper = display_element.querySelector("#jspsych-visual-search-circle-container");
+
+    // check distractors - array?
+    if(!Array.isArray(trial.foil)){
+      fa = [];
+      for(var i=0; i<trial.set_size; i++){
+        fa.push(trial.foil);
+      }
+      trial.foil = fa;
+    }
 
     show_fixation();
 
     function show_fixation() {
       // show fixation
-      var fixation = paper.image(trial.fixation_image, fix_loc[0], fix_loc[1], trial.fixation_size[0], trial.fixation_size[1]);
+      //var fixation = paper.image(trial.fixation_image, fix_loc[0], fix_loc[1], trial.fixation_size[0], trial.fixation_size[1]);
+      paper.innerHTML += "<img src='"+trial.fixation_image+"' style='position: absolute; top:"+fix_loc[0]+"px; left:"+fix_loc[1]+"px; width:"+trial.fixation_size[0]+"px; height:"+trial.fixation_size[1]+"px;'></img>";
 
       // wait
-      setTimeout(function() {
+      jsPsych.pluginAPI.setTimeout(function() {
         // after wait is over
         show_search_array();
-      }, trial.timing_fixation);
+      }, trial.fixation_duration);
     }
 
     function show_search_array() {
 
       var search_array_images = [];
 
+      var to_present = [];
+      if(trial.target_present){
+        to_present.push(trial.target);
+      }
+      to_present = to_present.concat(trial.foil);
+
       for (var i = 0; i < display_locs.length; i++) {
 
-        var which_image = (i == 0 && trial.target_present) ? trial.target : trial.foil;
-
-        var img = paper.image(which_image, display_locs[i][0], display_locs[i][1], trial.target_size[0], trial.target_size[1]);
-
-        search_array_images.push(img);
+        paper.innerHTML += "<img src='"+to_present[i]+"' style='position: absolute; top:"+display_locs[i][0]+"px; left:"+display_locs[i][1]+"px; width:"+trial.target_size[0]+"px; height:"+trial.target_size[1]+"px;'></img>";
 
       }
 
@@ -126,11 +177,11 @@ jsPsych.plugins["visual-search-circle"] = (function() {
 
         trial_over = true;
 
-        var correct = 0;
+        var correct = false;
 
-        if (info.key == trial.target_present_key && trial.target_present ||
-          info.key == trial.target_absent_key && !trial.target_present) {
-          correct = 1;
+        if (jsPsych.pluginAPI.compareKeys(info.key,trial.target_present_key) && trial.target_present ||
+            jsPsych.pluginAPI.compareKeys(info.key,trial.target_absent_key) && !trial.target_present) {
+          correct = true;
         }
 
         clear_display();
@@ -149,47 +200,30 @@ jsPsych.plugins["visual-search-circle"] = (function() {
         allow_held_key: false
       });
 
-      if (trial.timing_max_search > -1) {
+      if (trial.trial_duration !== null) {
 
-        if (trial.timing_max_search == 0) {
+        jsPsych.pluginAPI.setTimeout(function() {
+
           if (!trial_over) {
 
             jsPsych.pluginAPI.cancelKeyboardResponse(key_listener);
 
             trial_over = true;
 
-            var rt = -1;
+            var rt = null;
             var correct = 0;
-            var key_press = -1;
+            var key_press = null;
 
             clear_display();
 
             end_trial(rt, correct, key_press);
           }
-        } else {
+        }, trial.trial_duration);
 
-          setTimeout(function() {
-
-            if (!trial_over) {
-
-              jsPsych.pluginAPI.cancelKeyboardResponse(key_listener);
-
-              trial_over = true;
-
-              var rt = -1;
-              var correct = 0;
-              var key_press = -1;
-
-              clear_display();
-
-              end_trial(rt, correct, key_press);
-            }
-          }, trial.timing_max_search);
-        }
       }
 
       function clear_display() {
-        display_element.html('');
+        display_element.innerHTML = '';
       }
     }
 

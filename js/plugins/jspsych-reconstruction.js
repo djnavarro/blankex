@@ -14,18 +14,50 @@ jsPsych.plugins['reconstruction'] = (function() {
 
   var plugin = {};
 
+  plugin.info = {
+    name: 'reconstruction',
+    description: '',
+    parameters: {
+      stim_function: {
+        type: jsPsych.plugins.parameterType.FUNCTION,
+        pretty_name: 'Stimulus function',
+        default: undefined,
+        description: 'A function with a single parameter that returns an HTML-formatted string representing the stimulus.'
+      },
+      starting_value: {
+        type: jsPsych.plugins.parameterType.FLOAT,
+        pretty_name: 'Starting value',
+        default: 0.5,
+        description: 'The starting value of the stimulus parameter.'
+      },
+      step_size: {
+        type: jsPsych.plugins.parameterType.FLOAT,
+        pretty_name: 'Step size',
+        default: 0.05,
+        description: 'The change in the stimulus parameter caused by pressing one of the modification keys.'
+      },
+      key_increase: {
+        type: jsPsych.plugins.parameterType.KEYCODE,
+        pretty_name: 'Key increase',
+        default: 'h',
+        description: 'The key to press for increasing the parameter value.'
+      },
+      key_decrease: {
+        type: jsPsych.plugins.parameterType.KEYCODE,
+        pretty_name: 'Key decrease',
+        default: 'g',
+        description: 'The key to press for decreasing the parameter value.'
+      },
+      button_label: {
+        type: jsPsych.plugins.parameterType.STRING,
+        pretty_name: 'Button label',
+        default:  'Continue',
+        description: 'The text that appears on the button to finish the trial.'
+      }
+    }
+  }
+
   plugin.trial = function(display_element, trial) {
-
-    // default parameter values
-    trial.starting_value = (typeof trial.starting_value == 'undefined') ? 0.5 : trial.starting_value;
-    trial.step_size = trial.step_size || 0.05;
-    trial.key_increase = trial.key_increase || 'h';
-    trial.key_decrease = trial.key_decrease || 'g';
-
-    // if any trial variables are functions
-    // this evaluates the function and replaces
-    // it with the output of the function
-    trial = jsPsych.pluginAPI.evaluateFunctionParameters(trial, ['stim_function']);
 
     // current param level
     var param = trial.starting_value;
@@ -65,25 +97,21 @@ jsPsych.plugins['reconstruction'] = (function() {
 
       //console.log(param);
 
-      display_element.html('');
-
-      display_element.append($('<div id="jspsych-reconstruction-stim-container"></div>'));
-
-      $('#jspsych-reconstruction-stim-container').html(trial.stim_function(param));
+      display_element.innerHTML = '<div id="jspsych-reconstruction-stim-container">'+trial.stim_function(param)+'</div>';
 
       // add submit button
-      display_element.append($('<button>', {
-        'id': 'jspsych-reconstruction-next',
-        'class': 'jspsych-btn jspsych-reconstruction'
-      }));
-      $("#jspsych-reconstruction-next").html('Submit Answers');
-      $("#jspsych-reconstruction-next").click(endTrial);
+      display_element.innerHTML += '<button id="jspsych-reconstruction-next" class="jspsych-btn jspsych-reconstruction">'+trial.button_label+'</button>';
+
+      display_element.querySelector('#jspsych-reconstruction-next').addEventListener('click', endTrial);
     }
 
     function endTrial() {
       // measure response time
       var endTime = (new Date()).getTime();
       var response_time = endTime - startTime;
+
+      // clear keyboard response
+      jsPsych.pluginAPI.cancelKeyboardResponse(key_listener);
 
       // save data
       var trial_data = {
@@ -92,7 +120,7 @@ jsPsych.plugins['reconstruction'] = (function() {
         "start_value": trial.starting_value
       };
 
-      display_element.html('');
+      display_element.innerHTML = '';
 
       // next trial
       jsPsych.finishTrial(trial_data);
