@@ -11,8 +11,6 @@ A minimal template for running experiments through the browser using jsPsych and
 
 `gcloud app deploy --project==PROJECTNAME`
 
-- Downloading data. see `download` folder.
+- Downloading data from GAE. see `download` folder.
 
-
-
-
+TODO: I should expand this template to make use of a few more plugins and clean up the documentation
