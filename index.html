@@ -6,7 +6,7 @@
     <script src="./js/jquery.min.js"></script>
     <script src="./js/jspsych.js"></script>
     <script src="./js/plugins/jspsych-survey-multi-choice.js"></script>
-	  <script src="./js/plugins/jspsych-button-response.js"></script>
+	  <script src="./js/plugins/jspsych-html-button-response.js"></script>
 	  <script src="./js/welcome.js"></script>
     <link href="./js/css/jspsych.css" rel="stylesheet" type="text/css"></link>
   </head>
@@ -38,7 +38,7 @@
         timeline: timeline,
         preload_images: images,
         on_finish: function() {
-          endExperiment( jsPsych.data.dataAsCSV(), function() { document.write('<div id="endscreen" class="endscreen" style="width:1000px"><div class="endscreen" style="text-align:center; border:0px solid; padding:10px; font-size:120%; width:800px; float:right"><p><br><br><br>All done!<br><br>Your completion code is <span id="turkcode" style="font-weight:bold;font-size:130%">' + turkcode + '</span>. To receive payment for the HIT, return to the Amazon Mechanical Turk page and enter this code. Please contact us if something goes wrong and we\'ll fix it as quickly as possible.</p></div></div>') })
+          endExperiment( jsPsych.data.get().csv(), function() { document.write('<div id="endscreen" class="endscreen" style="width:1000px"><div class="endscreen" style="text-align:center; border:0px solid; padding:10px; font-size:120%; width:800px; float:right"><p><br><br><br>All done!<br><br>Your completion code is <span id="turkcode" style="font-weight:bold;font-size:130%">' + turkcode + '</span>. To receive payment for the HIT, return to the Amazon Mechanical Turk page and enter this code. Please contact us if something goes wrong and we\'ll fix it as quickly as possible.</p></div></div>') })
         }
       });
     }
@@ -46,6 +46,7 @@
     /* save and finish */
     function endExperiment(dataset,callback) {
       // $.post('submit',{"content": dataset}); // uncomment to post data
+      console.log(dataset) // comment out to avoid console log
       setTimeout(callback,1000)
     }
 
@@ -65,11 +66,10 @@
 
     /* define the instruction block */
     var instruction_block = {
-      type: 'button-response',
+      type: 'html-button-response',
       timing_post_trial: 0,
-	    button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
       choices: ['Click here to continue'],
-      on_trial_start: function() { setTimeout(function() {setDisplay("jspsych-btn","")}, 500)},
+      on_trial_start: function() { setTimeout(function() {setDisplay("jspsych-btn","")}, 1000)},
       is_html: true,
       timeline: [
         {stimulus: 'This is the first instruction page'},
@@ -78,35 +78,31 @@
     };
     introloop.push(instruction_block); // <- the setup block gets pushed to a "loop node"
 
-    /* text defining the instruction check questions */
-    var Q0_text = "<b>Question 1:</b> What is the answer to this question?";
-    var Q0_answers = ["Something wrong", "Something else wrong", "Something CORRECT"];
-    var Q1_text = "<b>Question 2:</b> What is the answer to this question?";
-    var Q1_answers = ["Something wrong", "Something CORRECT", "Something else wrong"];
-    var correctstring = '{"Q0":"' + Q0_answers[2] + '","Q1":"' + Q1_answers[1] + '"}';
-
     /* define instruction check block */
-	  var instructioncorrect = false;
+    var instructioncorrect = false;
     var instruction_check = {
-      type: "survey-multi-choice",
-      preamble: ["<p align='center'><b>Check your knowledge before you begin!</b></p>"],
-      questions: [Q0_text, Q1_text],
-      options: [Q0_answers, Q1_answers],
-      on_finish: function(data) {
-        if(data.responses == correctstring) {
-          action = false;
-          instructioncorrect = true;
+        type: "survey-multi-choice",
+        preamble: ["<p align='center'><b>Check your knowledge before you begin!</b></p>"],
+        questions: [
+          {prompt: "<b>Question 1</b>: Something?", options: [" wrong"," correct_1"], required: true},
+          {prompt: "<b>Question 2</b>: Something?", options: [" correct_2", " wrong", " wrong"], required: true},
+          {prompt: "<b>Question 3</b>: Something?", options: [" correct_3", " wrong", " wrong"], required: true}
+        ],
+        on_finish: function(data) {
+          if( data.responses == '{"Q0":" correct_1","Q1":" correct_2","Q2":" correct_3"}') {
+            action = false;
+            instructioncorrect = true;
+          }
         }
-      }
     }
     introloop.push(instruction_check)
 
     /* define a page for the incorrect response */
     var showsplash = true;
     var splash_screen = {
-      type: 'button-response',
+      type: 'html-button-response',
       timing_post_trial: 0,
-	    button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
+	//    button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
       choices: ['Click here to read the instructions again'],
       on_trial_start: function() {setTimeout(function() {setDisplay("jspsych-btn","")}, 500)},
       is_html: true,
@@ -134,9 +130,9 @@
 
     /* success trial */
     var successtrial = {
-      type: 'button-response',
+      type: 'html-button-response',
       timing_post_trial: 0,
-	    button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
+	//    button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
       choices: ['Click here to begin the experiment'],
       on_trial_start: function() { setTimeout(function() {setDisplay("jspsych-btn","")}, 500)},
       is_html: true,
@@ -146,9 +142,9 @@
 
     /* define the instruction block */
     var experiment_block = {
-      type: 'button-response',
+      type: 'html-button-response',
       timing_post_trial: 0,
-	    button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
+//	    button_html: '<button class="jspsych-btn" style="display:none">%choice%</button>',
       choices: ['Click here to continue'],
       on_trial_start: function() { setTimeout(function() {setDisplay("jspsych-btn","")}, 500)},
       is_html: true,
